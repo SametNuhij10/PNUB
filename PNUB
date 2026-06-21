@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Driftline — Sleep & Mood Tracker</title>
+<style>
+  :root{
+    --ink:#0f1426;
+    --dusk:#1c2444;
+    --twilight:#3a3f7a;
+    --moon:#f4e9d8;
+    --aurora:#7fd9c4;
+    --flare:#f2a65a;
+    --rose:#e8748a;
+    --line: rgba(244,233,216,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(127,217,196,0.10), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(232,116,138,0.10), transparent 40%),
+      var(--ink);
+    color:var(--moon);
+    font-family: 'Iowan Old Style','Palatino Linotype',Georgia,serif;
+    min-height:100vh;
+  }
+  .display{ font-family: 'Iowan Old Style', Georgia, serif; }
+  .mono{ font-family: 'Courier New', monospace; letter-spacing:0.04em; }
+
+  header{
+    padding:56px 24px 28px;
+    text-align:center;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.28em;
+    color:var(--aurora);
+    margin-bottom:14px;
+  }
+  h1{
+    font-size:clamp(34px,6vw,56px);
+    margin:0 0 10px;
+    font-weight:400;
+    letter-spacing:0.01em;
+  }
+  .sub{
+    color:rgba(244,233,216,0.65);
+    max-width:520px;
+    margin:0 auto;
+    font-size:15px;
+    line-height:1.6;
+  }
+
+  main{
+    max-width:920px;
+    margin:0 auto;
+    padding:48px 24px 100px;
+    display:grid;
+    gap:36px;
+  }
+
+  .panel{
+    background:linear-gradient(160deg, var(--dusk), rgba(28,36,68,0.6));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:32px;
+  }
+
+  .panel h2{
+    font-weight:400;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:0.22em;
+    color:var(--flare);
+    margin:0 0 24px;
+  }
+
+  /* Log form */
+  .log-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:28px;
+  }
+  @media(max-width:640px){ .log-grid{ grid-template-columns:1fr; } }
+
+  .field label{
+    display:block;
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:0.16em;
+    color:rgba(244,233,216,0.55);
+    margin-bottom:10px;
+  }
+
+  .hours-row{ display:flex; align-items:baseline; gap:14px; }
+  input[type=range]{
+    -webkit-appearance:none;
+    flex:1;
+    height:3px;
+    background:var(--twilight);
+    border-radius:3px;
+    outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:18px;height:18px;
+    border-radius:50%;
+    background:var(--aurora);
+    border:2px solid var(--ink);
+    cursor:pointer;
+  }
+  .hours-val{ font-size:22px; min-width:58px; color:var(--aurora); }
+
+  .moods{ display:flex; gap:10px; flex-wrap:wrap; }
+  .mood-btn{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--moon);
+    padding:10px 16px;
+    border-radius:30px;
+    cursor:pointer;
+    font-size:14px;
+    font-family:inherit;
+    transition:all .15s ease;
+  }
+  .mood-btn:hover{ border-color:var(--aurora); }
+  .mood-btn.active{
+    background:var(--aurora);
+    color:var(--ink);
+    border-color:var(--aurora);
+    font-weight:600;
+  }
+
+  textarea{
+    width:100%;
+    background:rgba(15,20,38,0.5);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--moon);
+    padding:14px;
+    font-family:inherit;
+    font-size:14px;
+    resize:vertical;
+    min-height:60px;
+  }
+  textarea:focus, .mood-btn:focus, button:focus, input:focus{
+    outline:2px solid var(--aurora);
+    outline-offset:2px;
+  }
+
+  .log-actions{
+    grid-column:1/-1;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:6px;
+  }
+  .save-btn{
+    background:var(--flare);
+    color:var(--ink);
+    border:none;
+    padding:13px 28px;
+    border-radius:30px;
+    font-size:14px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .save-btn:hover{ background:#ffb979; }
+  .save-msg{ font-size:13px; color:var(--aurora); opacity:0; transition:opacity .3s; }
+  .save-msg.show{ opacity:1; }
+
+  /* Week strip */
+  .week-strip{
+    display:grid;
+    grid-template-columns: repeat(7,1fr);
+    gap:8px;
+  }
+  .day-col{
+    text-align:center;
+    border-radius:12px;
+    padding:10px 4px 14px;
+    background:rgba(15,20,38,0.4);
+    border:1px solid var(--line);
+  }
+  .day-col .d{ font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:rgba(244,233,216,0.5); margin-bottom:10px;}
+  .bar-track{
+    height:90px;
+    width:10px;
+    margin:0 auto 8px;
+    background:rgba(244,233,216,0.08);
+    border-radius:6px;
+    display:flex;
+    align-items:flex-end;
+    overflow:hidden;
+  }
+  .bar-fill{
+    width:100%;
+    border-radius:6px 6px 0 0;
+    background:linear-gradient(180deg, var(--aurora), var(--twilight));
+  }
+  .day-col .h{ font-size:13px; color:var(--moon); }
+  .day-col .m{ font-size:16px; margin-top:4px; }
+  .empty-day{ opacity:0.25; }
+
+  /* Insight */
+  .insight{
+    display:flex;
+    gap:18px;
+    align-items:flex-start;
+  }
+  .insight .glyph{
+    font-size:28px;
+    line-height:1;
+  }
+  .insight p{
+    margin:0;
+    line-height:1.7;
+    color:rgba(244,233,216,0.85);
+    font-size:15.5px;
+  }
+  .insight strong{ color:var(--flare); }
+
+  .tip-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+    gap:18px;
+    margin-top:6px;
+  }
+  .tip{
+    border-left:2px solid var(--aurora);
+    padding-left:14px;
+  }
+  .tip .num{ font-size:11px; color:var(--rose); letter-spacing:.14em; }
+  .tip p{ margin:6px 0 0; font-size:14px; line-height:1.55; color:rgba(244,233,216,0.8); }
+
+  footer{
+    text-align:center;
+    padding:30px 20px 50px;
+    font-size:12px;
+    color:rgba(244,233,216,0.35);
+    letter-spacing:0.04em;
+  }
+
+  .reset-link{
+    background:none;border:none;color:rgba(244,233,216,0.4);
+    font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ transition:none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">A small tool for noticing your nights</div>
+  <h1 class="display">Driftline</h1>
+  <p class="sub">Sleep shapes mood more than most people realize — HBSC data across Europe and North America consistently links shorter, irregular sleep in teens to higher stress and lower life satisfaction. Log a night, watch the pattern form.</p>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>Tonight's entry</h2>
+    <div class="log-grid">
+      <div class="field">
+        <label for="hours">Hours slept</label>
+        <div class="hours-row">
+          <input type="range" id="hours" min="3" max="11" step="0.5" value="7.5">
+          <span class="hours-val" id="hoursVal">7.5h</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>How do you feel today?</label>
+        <div class="moods" id="moodGroup">
+          <button class="mood-btn" data-mood="😣" data-label="Drained">😣 Drained</button>
+          <button class="mood-btn" data-mood="😐" data-label="Flat">😐 Flat</button>
+          <button class="mood-btn active" data-mood="🙂" data-label="Okay">🙂 Okay</button>
+          <button class="mood-btn" data-mood="😄" data-label="Good">😄 Good</button>
+          <button class="mood-btn" data-mood="🤩" data-label="Great">🤩 Great</button>
+        </div>
+      </div>
+      <div class="field" style="grid-column:1/-1;">
+        <label for="note">One line about today (optional)</label>
+        <textarea id="note" placeholder="e.g. stayed up texting, big exam tomorrow, felt good after football..."></textarea>
+      </div>
+      <div class="log-actions">
+        <button class="save-btn" id="saveBtn">Save tonight</button>
+        <span class="save-msg" id="saveMsg">Saved to your week ✓</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>This week</h2>
+    <div class="week-strip" id="weekStrip"></div>
+  </section>
+
+  <section class="panel">
+    <h2>What your pattern says</h2>
+    <div class="insight">
+      <div class="glyph" id="insightGlyph">🌙</div>
+      <p id="insightText">Log a few nights and Driftline will start finding the link between your sleep and your mood — privately, on this device only.</p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Built on the research</h2>
+    <div class="tip-grid">
+      <div class="tip"><div class="num">01</div><p>Teens averaging under 7 hours report markedly higher stress and lower satisfaction with life in HBSC survey data.</p></div>
+      <div class="tip"><div class="num">02</div><p>Irregular sleep timing — not just total hours — is linked to worse mood the next day, even at the same average duration.</p></div>
+      <div class="tip"><div class="num">03</div><p>Screens before bed delay sleep onset; HBSC notes heavy evening device use correlates with shorter sleep in adolescents.</p></div>
+      <div class="tip"><div class="num">04</div><p>A consistent wind-down routine — even 15 minutes — is one of the few habits with strong evidence for easier sleep onset.</p></div>
+    </div>
+  </section>
+
+  <div style="text-align:center;">
+    <button class="reset-link" id="resetBtn">Clear this week's data</button>
+  </div>
+
+</main>
+
+<footer>
+  Driftline — a student prototype inspired by HBSC (Health Behaviour in School-aged Children) data · all entries stay on your device, nothing is sent anywhere
+</footer>
+
+<script>
+  const hoursInput = document.getElementById('hours');
+  const hoursVal = document.getElementById('hoursVal');
+  hoursInput.addEventListener('input', () => hoursVal.textContent = hoursInput.value + 'h');
+
+  let selectedMood = { mood:'🙂', label:'Okay' };
+  document.querySelectorAll('.mood-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedMood = { mood: btn.dataset.mood, label: btn.dataset.label };
+    });
+  });
+
+  const moodScore = { '😣':1, '😐':2, '🙂':3, '😄':4, '🤩':5 };
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  function loadWeek(){
+    try{
+      return JSON.parse(localStorage.getItem('driftline_week') || '{}');
+    }catch(e){ return {}; }
+  }
+  function saveWeek(data){
+    localStorage.setItem('driftline_week', JSON.stringify(data));
+  }
+
+  function todayKey(){
+    const d = new Date();
+    return d.toISOString().slice(0,10);
+  }
+
+  function renderWeek(){
+    const data = loadWeek();
+    const strip = document.getElementById('weekStrip');
+    strip.innerHTML = '';
+    const today = new Date();
+    const entries = [];
+
+    for(let i=6;i>=0;i--){
+      const d = new Date(today);
+      d.setDate(today.getDate()-i);
+      const key = d.toISOString().slice(0,10);
+      const label = days[d.getDay()];
+      const entry = data[key];
+      entries.push(entry);
+
+      const col = document.createElement('div');
+      col.className = 'day-col' + (entry ? '' : ' empty-day');
+      const heightPct = entry ? Math.min(100, (entry.hours/11)*100) : 8;
+      col.innerHTML = `
+        <div class="d">${label}</div>
+        <div class="bar-track"><div class="bar-fill" style="height:${heightPct}%"></div></div>
+        <div class="h">${entry ? entry.hours+'h' : '—'}</div>
+        <div class="m">${entry ? entry.mood : '·'}</div>
+      `;
+      strip.appendChild(col);
+    }
+    renderInsight(entries);
+  }
+
+  function renderInsight(entries){
+    const logged = entries.filter(e=>e);
+    const glyph = document.getElementById('insightGlyph');
+    const text = document.getElementById('insightText');
+
+    if(logged.length < 3){
+      glyph.textContent = '🌙';
+      text.innerHTML = `Log a few more nights (you have <strong>${logged.length}</strong> so far) — Driftline needs at least 3 to start spotting your pattern.`;
+      return;
+    }
+
+    const avgHours = logged.reduce((s,e)=>s+e.hours,0)/logged.length;
+    const avgMood = logged.reduce((s,e)=>s+moodScore[e.mood],0)/logged.length;
+
+    const wellRested = logged.filter(e=>e.hours>=7.5);
+    const underSlept = logged.filter(e=>e.hours<7.5);
+    const wrMood = wellRested.length ? wellRested.reduce((s,e)=>s+moodScore[e.mood],0)/wellRested.length : null;
+    const usMood = underSlept.length ? underSlept.reduce((s,e)=>s+moodScore[e.mood],0)/underSlept.length : null;
+
+    let msg = `Average this week: <strong>${avgHours.toFixed(1)}h</strong> of sleep, mood around <strong>${avgMood.toFixed(1)}/5</strong>. `;
+
+    if(wrMood && usMood){
+      const diff = wrMood - usMood;
+      if(diff > 0.4){
+        msg += `On nights with 7.5h+ your mood runs about <strong>${diff.toFixed(1)} points higher</strong> than on shorter nights — your data is echoing the HBSC findings almost exactly.`;
+        glyph.textContent = '📈';
+      } else if(diff < -0.4){
+        msg += `Interestingly, your mood doesn't dip much on shorter nights — other factors (stress, social plans) may be driving it more than hours alone.`;
+        glyph.textContent = '🔍';
+      } else {
+        msg += `Your mood looks fairly steady regardless of hours slept this week — keep logging to see if a pattern emerges.`;
+        glyph.textContent = '⚖️';
+      }
+    } else if(avgHours < 7){
+      msg += `You're averaging under the 7–9h teens generally need — even a 30–45 minute earlier bedtime tends to show up in mood within a few days.`;
+      glyph.textContent = '😴';
+    } else {
+      msg += `You're in a solid range. Consistency (similar bedtime each night) matters almost as much as total hours.`;
+      glyph.textContent = '✨';
+    }
+    text.innerHTML = msg;
+  }
+
+  document.getElementById('saveBtn').addEventListener('click', ()=>{
+    const data = loadWeek();
+    data[todayKey()] = {
+      hours: parseFloat(hoursInput.value),
+      mood: selectedMood.mood,
+      label: selectedMood.label,
+      note: document.getElementById('note').value.trim()
+    };
+    saveWeek(data);
+    renderWeek();
+    const msg = document.getElementById('saveMsg');
+    msg.classList.add('show');
+    setTimeout(()=>msg.classList.remove('show'), 2200);
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    if(confirm('Clear all logged entries for this week?')){
+      localStorage.removeItem('driftline_week');
+      renderWeek();
+    }
+  });
+
+  renderWeek();
+</script>
+
+</body>
+</html>
